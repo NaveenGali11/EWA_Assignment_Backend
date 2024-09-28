@@ -1,6 +1,7 @@
 const db = require("../config/db");
 const path = require("path");
 const multer = require("multer");
+const Review = require('../models/reviewModel');  // Assuming you have a Review model for MongoDB
 
 function generateProductId() {
   const timestamp = Date.now(); // Get current timestamp
@@ -231,4 +232,135 @@ exports.addAccessory = (req, res) => {
       }
     );
   })
+};
+
+// Get trending products based on order frequency
+// exports.getTrendingProducts = (req, res) => {
+//   try {
+//     console.log("Trending products endpoint hit!");
+
+//     // Query to get the count of ordered products from order_items
+//     const trendingProductsQuery = `
+//       SELECT p.id, p.name, p.price, p.manufacturer, p.image, 
+//              COUNT(oi.product_id) AS order_count 
+//       FROM order_items oi
+//       JOIN products p ON oi.product_id = p.id
+//       GROUP BY oi.product_id
+//       ORDER BY order_count DESC
+//       LIMIT 10;
+//     `;
+
+//     db.query(trendingProductsQuery, (err, result) => {
+//       if (err) {
+//         console.error("Error fetching trending products:", err.message);
+//         return res.status(500).json({ message: "Error fetching trending products" });
+//       }
+
+//       // Return the trending products
+//       res.status(200).json(result);
+//     });
+//   } catch (error) {
+//     console.error("Error getting trending products:", error.message);
+//     res.status(500).json({ message: "Error getting trending products" });
+//   }
+// };
+
+exports.getFilteredProducts = async (req, res) => {
+  const filterType = req.query.filter; // e.g., 'most-reviewed', 'top-rated'
+
+  try {
+    let mongoQuery = [];
+    let mysqlProductIds = [];
+
+    switch (filterType) {
+      case 'most-reviewed':
+        // MongoDB aggregation to get the most reviewed products
+        mongoQuery = [
+          { 
+            $group: { 
+              _id: "$product_id",  // Group by product_id
+              review_count: { $sum: 1 }  // Count number of reviews per product
+            }
+          },
+          { $sort: { review_count: -1 } },  // Sort by review count (most reviewed)
+          { $limit: 10 }  // Limit to top 10 most-reviewed products
+        ];
+        break;
+
+      case 'top-rated':
+        // MongoDB aggregation to get the top-rated products
+        mongoQuery = [
+          { 
+            $group: { 
+              _id: "$product_id",  // Group by product_id
+              average_rating: { $avg: "$rating" },  // Calculate average rating
+            }
+          },
+          { $sort: { average_rating: -1 } },  // Sort by average rating (highest rated)
+          { $limit: 10 }  // Limit to top 10 top-rated products
+        ];
+        break;
+
+      default:
+        // Fallback to the most ordered products (using MySQL)
+        const mysqlQuery = `
+          SELECT p.id, p.name, p.price, p.manufacturer, p.image, 
+                COUNT(oi.product_id) AS order_count 
+          FROM order_items oi
+          JOIN products p ON oi.product_id = p.id
+          GROUP BY oi.product_id
+          ORDER BY order_count DESC
+          LIMIT 10;
+        `;
+
+        db.query(mysqlQuery, (err, result) => {
+          if (err) {
+            console.error("Error fetching products:", err.message);
+            return res.status(500).json({ message: "Error fetching products" });
+          }
+          return res.status(200).json(result);  // Return the MySQL results for trending products
+        });
+        return;
+    }
+
+    // Fetching data from MongoDB (reviews collection)
+    const trendingData = await Review.aggregate(mongoQuery);
+
+    // Collect product IDs from MongoDB results
+    mysqlProductIds = trendingData.map(item => item._id);
+
+    // If no product IDs were found, return empty array
+    if (mysqlProductIds.length === 0) {
+      return res.status(200).json([]);
+    }
+
+    // Fetch product details from MySQL based on product_ids from MongoDB
+    const productQuery = `
+      SELECT id, name, price, manufacturer, image
+      FROM products
+      WHERE id IN (?)
+    `;
+
+    db.query(productQuery, [mysqlProductIds], (err, products) => {
+      if (err) {
+        console.error("Error fetching product details:", err.message);
+        return res.status(500).json({ message: "Error fetching product details" });
+      }
+
+      // Merge MongoDB review data with MySQL product data
+      const filteredProducts = products.map(product => {
+        const reviewData = trendingData.find(item => item._id == product.id);
+        return {
+          ...product,
+          review_count: reviewData ? reviewData.review_count : 0,  // Only for 'most-reviewed'
+          average_rating: reviewData && reviewData.average_rating ? reviewData.average_rating.toFixed(2) : null,  // Only for 'top-rated'
+        };
+      });
+
+      res.status(200).json(filteredProducts);
+    });
+  } catch (error) {
+    console.error("Error getting filtered products:", error.message);
+    res.status(500).json({ message: "Error getting filtered products" });
+  }
 };
