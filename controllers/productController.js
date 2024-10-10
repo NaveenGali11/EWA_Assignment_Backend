@@ -22,6 +22,85 @@ const storage = multer.diskStorage({
 // Initialize multer upload function
 const upload = multer({ storage: storage }).single("image"); // Expect single file upload with field name 'image'
 
+// // Add a new product (Admin only)
+// exports.addProduct = (req, res) => {
+//   upload(req, res, function (err) {
+//     if (err) {
+//       console.error("Error uploading image:", err.message);
+//       return res.status(500).json({ message: "Error uploading image" });
+//     }
+//
+//     const {
+//       name,
+//       category,
+//       price,
+//       description,
+//       on_sale,
+//       manufacturer,
+//       warranty,
+//       retailer_discount,
+//       manufacturer_rebate,
+//     } = req.body;
+//     const image = req.file ? req.file.filename : null; // Get uploaded image filename
+//     const productId = generateProductId(); // Generate unique product ID based on timestamp
+//
+//     // Ensure required fields are provided
+//     if (!name || !price) {
+//       return res.status(400).json({ message: "Name and price are required" });
+//     }
+//
+//     const query = `
+//       INSERT INTO products
+//       (id, name, category, price, description, on_sale, manufacturer, warranty, retailer_discount, manufacturer_rebate, image)
+//       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//     `;
+//
+//     db.query(
+//       query,
+//       [
+//         productId,
+//         name,
+//         category,
+//         price,
+//         description,
+//         on_sale,
+//         manufacturer,
+//         warranty,
+//         retailer_discount,
+//         manufacturer_rebate,
+//         image,
+//       ],
+//       (err, result) => {
+//         if (err) {
+//           console.error("Error executing query:", err.message);
+//           return res
+//             .status(500)
+//             .json({ error: "Error adding product", details: err.message });
+//         }
+//
+//         // Return product information along with image URL and productId
+//         const imageUrl = image
+//           ? `http://localhost:5001/uploads/${image}`
+//           : null;
+//         return res.status(201).json({
+//           message: "Product added successfully",
+//           productId,
+//           name,
+//           category,
+//           price,
+//           description,
+//           on_sale,
+//           manufacturer,
+//           warranty,
+//           retailer_discount,
+//           manufacturer_rebate,
+//           image,
+//         });
+//       }
+//     );
+//   });
+// };
+
 // Add a new product (Admin only)
 exports.addProduct = (req, res) => {
   upload(req, res, function (err) {
@@ -31,75 +110,53 @@ exports.addProduct = (req, res) => {
     }
 
     const {
-      name,
-      category,
-      price,
-      description,
-      on_sale,
-      manufacturer,
-      warranty,
-      retailer_discount,
-      manufacturer_rebate,
+      name, category, price, description, on_sale, manufacturer, warranty, retailer_discount, manufacturer_rebate, stock_quantity
     } = req.body;
-    const image = req.file ? req.file.filename : null; // Get uploaded image filename
-    const productId = generateProductId(); // Generate unique product ID based on timestamp
 
-    // Ensure required fields are provided
+    const image = req.file ? req.file.filename : null;
+    const productId = generateProductId();
+    const defaultStockQuantity = stock_quantity ? stock_quantity : 50;  // Default to 50 if not provided
+
     if (!name || !price) {
       return res.status(400).json({ message: "Name and price are required" });
     }
 
     const query = `
       INSERT INTO products 
-      (id, name, category, price, description, on_sale, manufacturer, warranty, retailer_discount, manufacturer_rebate, image) 
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (id, name, category, price, description, on_sale, manufacturer, warranty, retailer_discount, manufacturer_rebate, image, stock_quantity) 
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `;
 
     db.query(
-      query,
-      [
-        productId,
-        name,
-        category,
-        price,
-        description,
-        on_sale,
-        manufacturer,
-        warranty,
-        retailer_discount,
-        manufacturer_rebate,
-        image,
-      ],
-      (err, result) => {
-        if (err) {
-          console.error("Error executing query:", err.message);
-          return res
-            .status(500)
-            .json({ error: "Error adding product", details: err.message });
-        }
+        query,
+        [productId, name, category, price, description, on_sale, manufacturer, warranty, retailer_discount, manufacturer_rebate, image, defaultStockQuantity],
+        (err, result) => {
+          if (err) {
+            console.error("Error executing query:", err.message);
+            return res.status(500).json({ error: "Error adding product", details: err.message });
+          }
 
-        // Return product information along with image URL and productId
-        const imageUrl = image
-          ? `http://localhost:5001/uploads/${image}`
-          : null;
-        return res.status(201).json({
-          message: "Product added successfully",
-          productId,
-          name,
-          category,
-          price,
-          description,
-          on_sale,
-          manufacturer,
-          warranty,
-          retailer_discount,
-          manufacturer_rebate,
-          image,
-        });
-      }
+          const imageUrl = image ? `http://localhost:5001/uploads/${image}` : null;
+          return res.status(201).json({
+            message: "Product added successfully",
+            productId,
+            name,
+            category,
+            price,
+            description,
+            on_sale,
+            manufacturer,
+            warranty,
+            retailer_discount,
+            manufacturer_rebate,
+            image,
+            stock_quantity: defaultStockQuantity  // Include default stock quantity
+          });
+        }
     );
   });
 };
+
 
 // Get all products (Public)
 exports.getProducts = (req, res) => {
@@ -197,42 +254,89 @@ exports.deleteProduct = (req, res) => {
   });
 };
 
+// exports.addAccessory = (req, res) => {
+//   upload(req,res,function(err) {
+//     if (err) {
+//       console.error("Error uploading image:", err.message);
+//       return res.status(500).json({ message: "Error uploading image" });
+//     }
+//     const { product_id } = req.params;
+//     const { name, price, description, image } = req.body;
+//
+//
+//
+//     const accessoryId = generateProductId(); // Use the same ID generation function
+//
+//     const query = `
+//       INSERT INTO accessories (id, name, product_id, price, description, image)
+//       VALUES (?, ?, ?, ?, ?, ?)
+//     `;
+//
+//     db.query(
+//       query,
+//       [accessoryId, name, product_id, price, description, image],
+//       (err, result) => {
+//         if (err) {
+//           console.error("Error adding accessory:", err.message);
+//           return res
+//             .status(500)
+//             .json({ error: "Error adding accessory", details: err.message });
+//         }
+//
+//         return res
+//           .status(201)
+//           .json({ message: "Accessory added successfully", accessoryId });
+//       }
+//     );
+//   })
+// };
+
+// Add a new accessory to a product (Admin only)
 exports.addAccessory = (req, res) => {
-  upload(req,res,function(err) {
+  upload(req, res, function (err) {
     if (err) {
-      console.error("Error uploading image:", err.message);
-      return res.status(500).json({ message: "Error uploading image" });
+      console.error('Error uploading image:', err.message);
+      return res.status(500).json({ message: 'Error uploading image' });
     }
+
     const { product_id } = req.params;
-    const { name, price, description, image } = req.body;
+    const { name, price, description, stock_quantity } = req.body;
+    const image = req.file ? req.file.filename : null;
+    const accessoryId = generateProductId();
+    const defaultStockQuantity = stock_quantity ? stock_quantity : 25;  // Default to 25 for accessories
 
-    
+    if (!name || !price) {
+      return res.status(400).json({ message: 'Name and price are required' });
+    }
 
-    const accessoryId = generateProductId(); // Use the same ID generation function
+    const checkProductQuery = 'SELECT * FROM products WHERE id = ?';
+    db.query(checkProductQuery, [product_id], (err, productResult) => {
+      if (err) {
+        console.error('Error checking product existence:', err.message);
+        return res.status(500).json({ message: 'Error checking product existence' });
+      }
 
-    const query = `
-      INSERT INTO accessories (id, name, product_id, price, description, image) 
-      VALUES (?, ?, ?, ?, ?, ?)
-    `;
+      if (productResult.length === 0) {
+        return res.status(404).json({ message: 'Product not found' });
+      }
 
-    db.query(
-      query,
-      [accessoryId, name, product_id, price, description, image],
-      (err, result) => {
+      const insertAccessoryQuery = `
+        INSERT INTO accessories (id, name, product_id, price, description, image, stock_quantity) 
+        VALUES (?, ?, ?, ?, ?, ?, ?)
+      `;
+
+      db.query(insertAccessoryQuery, [accessoryId, name, product_id, price, description, image, defaultStockQuantity], (err, result) => {
         if (err) {
-          console.error("Error adding accessory:", err.message);
-          return res
-            .status(500)
-            .json({ error: "Error adding accessory", details: err.message });
+          console.error('Error inserting accessory:', err.message);
+          return res.status(500).json({ message: 'Error inserting accessory', details: err.message });
         }
 
-        return res
-          .status(201)
-          .json({ message: "Accessory added successfully", accessoryId });
-      }
-    );
-  })
+        return res.status(201).json({ message: 'Accessory added successfully', accessoryId });
+      });
+    });
+  });
 };
+
 
 // Get trending products based on order frequency
 // exports.getTrendingProducts = (req, res) => {
@@ -364,3 +468,79 @@ exports.getFilteredProducts = async (req, res) => {
     res.status(500).json({ message: "Error getting filtered products" });
   }
 };
+
+// Get Inventory Report
+exports.getInventoryReport = (req, res) => {
+  const allProductsQuery = `
+    SELECT name, price, stock_quantity 
+    FROM products
+  `;
+
+  const onSaleProductsQuery = `
+    SELECT name, price, stock_quantity 
+    FROM products 
+    WHERE on_sale = 1
+  `;
+
+  const rebateProductsQuery = `
+    SELECT name, price, stock_quantity, manufacturer_rebate 
+    FROM products 
+    WHERE manufacturer_rebate IS NOT NULL
+  `;
+
+  // Fetch all product data
+  db.query(allProductsQuery, (err, allProducts) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error fetching inventory data', error: err });
+    }
+
+    // Fetch products on sale
+    db.query(onSaleProductsQuery, (err, onSaleProducts) => {
+      if (err) {
+        return res.status(500).json({ message: 'Error fetching on-sale products', error: err });
+      }
+
+      // Fetch products with manufacturer rebates
+      db.query(rebateProductsQuery, (err, rebateProducts) => {
+        if (err) {
+          return res.status(500).json({ message: 'Error fetching rebate products', error: err });
+        }
+
+        // Prepare response with all three sets of data
+        return res.status(200).json({
+          allProducts,  // All products with stock
+          onSaleProducts,  // Products currently on sale
+          rebateProducts  // Products with manufacturer rebates
+        });
+      });
+    });
+  });
+};
+
+// Auto-complete search from products table
+exports.getAutoCompleteSuggestions = (req, res) => {
+  const { query } = req.query;
+
+  if (!query) {
+    return res.status(400).json({ message: 'Query is required' });
+  }
+
+  // SQL query to fetch all product information for products whose names match the search query
+  const searchQuery = `
+    SELECT id, name, price, stock_quantity, description, on_sale, manufacturer, warranty, image
+    FROM products 
+    WHERE name LIKE ? 
+    LIMIT 4
+  `;
+
+  db.query(searchQuery, [`%${query}%`], (err, results) => {
+    if (err) {
+      console.error("Error fetching search suggestions:", err);
+      return res.status(500).json({ message: "Error fetching suggestions", error: err });
+    }
+
+    // Return the full product information
+    res.status(200).json({ suggestions: results });
+  });
+};
+

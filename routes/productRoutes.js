@@ -1,18 +1,23 @@
 const express = require('express');
-const { 
-  addProduct, 
-  getProducts, 
-  getProductById, 
-  updateProduct, 
-  deleteProduct, 
-  getFilteredProducts // Import the trending products function
+const {
+    addProduct,
+    getProducts,
+    getProductById,
+    updateProduct,
+    deleteProduct,
+    getFilteredProducts, getInventoryReport, getAutoCompleteSuggestions // Import the trending products function
 } = require('../controllers/productController');
-const { protect, admin } = require('../middlewares/authMiddleware');
+const {protect, admin, salesman} = require('../middlewares/authMiddleware');
 
 const router = express.Router();
 
 // Public routes
 router.get('/', getProducts);  // Get all products
+
+// Add inventory report route
+router.get('/inventoryreport', protect, salesman, getInventoryReport); // Inventory Report
+
+router.get("/autocomplete", getAutoCompleteSuggestions)
 
 // Trending products route
 router.get('/trending', getFilteredProducts);  // Get trending products

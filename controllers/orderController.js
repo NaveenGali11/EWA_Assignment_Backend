@@ -4,153 +4,163 @@ const db = require("../config/db"); // Database connection
 function generateConfirmationNumber() {
   return Math.floor(1000000 + Math.random() * 9000000).toString(); // 7-digit number
 }
-
-// Place an order
+//
 // exports.placeOrder = (req, res) => {
-//   const { user_id, cart_items, delivery_type, store_id, customer_details } = req.body;
-
+//   const { user_id, cart_items, delivery_type, store_id, customer_details } =
+//     req.body;
+//
 //   // Validate required fields
 //   if (!user_id || !cart_items || !delivery_type || !customer_details) {
-//     return res.status(400).json({ message: 'Missing required order information' });
+//     return res
+//       .status(400)
+//       .json({ message: "Missing required order information" });
 //   }
-
-//   if (delivery_type === 'store_pickup' && !store_id) {
-//     return res.status(400).json({ message: 'Missing store selection for pickup' });
+//
+//   if (delivery_type === "store_pickup" && !store_id) {
+//     return res
+//       .status(400)
+//       .json({ message: "Missing store selection for pickup" });
 //   }
-
+//
 //   // Calculate totals
 //   let subtotal = 0;
-//   cart_items.forEach(item => {
+//   cart_items.forEach((item) => {
 //     subtotal += item.price * item.quantity;
 //   });
-
+//
+//   // Apply 3% discount if subtotal is greater than or equal to $70
+//   let discount = 0;
+//   if (subtotal >= 70) {
+//     discount = subtotal * 0.03; // 3% discount
+//     subtotal -= discount; // Adjust the subtotal after discount
+//   }
+//
+//   // Calculate tax and delivery fee
 //   const tax = subtotal * 0.02;
-//   const delivery_fee = delivery_type === 'home_delivery' ? subtotal * 0.01 : 0;
+//   const delivery_fee = delivery_type === "home_delivery" ? subtotal * 0.01 : 0;
 //   const total = subtotal + tax + delivery_fee;
-
+//
 //   // Generate confirmation number and set delivery/pickup date (2 weeks later)
 //   const confirmation_number = generateConfirmationNumber();
-//   const deliveryDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];  // 2 weeks from now
-
+//   const deliveryDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
+//     .toISOString()
+//     .split("T")[0]; // 2 weeks from now
+//
 //   // Insert order into MySQL
 //   const orderQuery = `
-//       INSERT INTO orders (user_id, confirmation_number, subtotal, tax, delivery_fee, total, delivery_type, delivery_date, customer_name, customer_address, customer_email, payment_method, store_id)
-//       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+//       INSERT INTO orders (user_id, confirmation_number, subtotal, discount, tax, delivery_fee, total, delivery_type, delivery_date, customer_name, address1, address2, city, state, zip, customer_email, payment_method, card_number, card_expiry, card_cvv, store_id, status)
+//       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
 //   `;
-
+//
 //   const orderValues = [
-//     user_id, confirmation_number, subtotal.toFixed(2), tax.toFixed(2), delivery_fee.toFixed(2), total.toFixed(2),
-//     delivery_type, deliveryDate, customer_details.name, customer_details.address, customer_details.email, customer_details.payment_method, store_id || null
+//     user_id,
+//     confirmation_number,
+//     subtotal.toFixed(2),
+//     discount.toFixed(2),
+//     tax.toFixed(2),
+//     delivery_fee.toFixed(2),
+//     total.toFixed(2),
+//     delivery_type,
+//     deliveryDate,
+//     customer_details.name,
+//     customer_details.address1,
+//     customer_details.address2,
+//     customer_details.city,
+//     customer_details.state,
+//     customer_details.zip,
+//     customer_details.email,
+//     customer_details.payment_method,
+//     customer_details.card_number.slice(-4),
+//     customer_details.card_expiry,
+//     customer_details.card_cvv,
+//     store_id || null
 //   ];
-
+//
 //   db.query(orderQuery, orderValues, (err, result) => {
 //     if (err) {
-//       console.error('Error placing order:', err.message);
-//       return res.status(500).json({ message: 'Error placing order' });
+//       console.error("Error placing order:", err.message);
+//       return res.status(500).json({ message: "Error placing order" });
 //     }
-
+//
 //     // Insert order items into order_items table
 //     const orderItemsQuery = `INSERT INTO order_items (order_id, product_id, accessory_id, quantity, price) VALUES ?`;
-//     const orderItemsValues = cart_items.map(item => [
+//     const orderItemsValues = cart_items.map((item) => [
 //       result.insertId,
 //       item.product_id || null,
 //       item.accessory_id || null,
 //       item.quantity,
-//       item.price
+//       item.price,
 //     ]);
-
+//
 //     db.query(orderItemsQuery, [orderItemsValues], (err, orderItemsResult) => {
 //       if (err) {
-//         console.error('Error adding order items:', err.message);
-//         return res.status(500).json({ message: 'Error placing order items' });
+//         console.error("Error adding order items:", err.message);
+//         return res.status(500).json({ message: "Error placing order items" });
 //       }
-
+//
 //       // Clear the cart for this user
-//       db.query(`DELETE FROM cart WHERE user_id = ?`, [user_id], (err, clearCartResult) => {
-//         if (err) {
-//           console.error('Error clearing cart:', err.message);
-//           return res.status(500).json({ message: 'Error clearing cart' });
+//       db.query(
+//         `DELETE FROM cart WHERE user_id = ?`,
+//         [user_id],
+//         (err, clearCartResult) => {
+//           if (err) {
+//             console.error("Error clearing cart:", err.message);
+//             return res.status(500).json({ message: "Error clearing cart" });
+//           }
+//
+//           res.status(201).json({
+//             confirmation_number,
+//             delivery_date: deliveryDate,
+//             total: total.toFixed(2),
+//             store_id,
+//             discount: discount.toFixed(2), // Include discount in the response
+//           });
 //         }
-
-//         res.status(201).json({
-//           confirmation_number,
-//           delivery_date: deliveryDate,
-//           total: total.toFixed(2),
-//           store_id
-//         });
-//       });
+//       );
 //     });
 //   });
 // };
 
 exports.placeOrder = (req, res) => {
-  const { user_id, cart_items, delivery_type, store_id, customer_details } =
-    req.body;
+  const { user_id, cart_items, delivery_type, store_id, customer_details } = req.body;
 
-  // Validate required fields
   if (!user_id || !cart_items || !delivery_type || !customer_details) {
-    return res
-      .status(400)
-      .json({ message: "Missing required order information" });
+    return res.status(400).json({ message: "Missing required order information" });
   }
 
   if (delivery_type === "store_pickup" && !store_id) {
-    return res
-      .status(400)
-      .json({ message: "Missing store selection for pickup" });
+    return res.status(400).json({ message: "Missing store selection for pickup" });
   }
 
-  // Calculate totals
   let subtotal = 0;
-  cart_items.forEach((item) => {
+  cart_items.forEach(item => {
     subtotal += item.price * item.quantity;
   });
 
-  // Apply 3% discount if subtotal is greater than or equal to $70
   let discount = 0;
   if (subtotal >= 70) {
-    discount = subtotal * 0.03; // 3% discount
-    subtotal -= discount; // Adjust the subtotal after discount
+    discount = subtotal * 0.03;
+    subtotal -= discount;
   }
 
-  // Calculate tax and delivery fee
   const tax = subtotal * 0.02;
   const delivery_fee = delivery_type === "home_delivery" ? subtotal * 0.01 : 0;
   const total = subtotal + tax + delivery_fee;
 
-  // Generate confirmation number and set delivery/pickup date (2 weeks later)
   const confirmation_number = generateConfirmationNumber();
-  const deliveryDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000)
-    .toISOString()
-    .split("T")[0]; // 2 weeks from now
+  const deliveryDate = new Date(Date.now() + 14 * 24 * 60 * 60 * 1000).toISOString().split("T")[0];
 
-  // Insert order into MySQL
   const orderQuery = `
       INSERT INTO orders (user_id, confirmation_number, subtotal, discount, tax, delivery_fee, total, delivery_type, delivery_date, customer_name, address1, address2, city, state, zip, customer_email, payment_method, card_number, card_expiry, card_cvv, store_id, status)
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, 'pending')
   `;
 
   const orderValues = [
-    user_id,
-    confirmation_number,
-    subtotal.toFixed(2),
-    discount.toFixed(2),
-    tax.toFixed(2),
-    delivery_fee.toFixed(2),
-    total.toFixed(2),
-    delivery_type,
-    deliveryDate,
-    customer_details.name,
-    customer_details.address1,
-    customer_details.address2,
-    customer_details.city,
-    customer_details.state,
-    customer_details.zip,
-    customer_details.email,
-    customer_details.payment_method,
-    customer_details.card_number.slice(-4),
-    customer_details.card_expiry,
-    customer_details.card_cvv,
+    user_id, confirmation_number, subtotal.toFixed(2), discount.toFixed(2), tax.toFixed(2),
+    delivery_fee.toFixed(2), total.toFixed(2), delivery_type, deliveryDate, customer_details.name,
+    customer_details.address1, customer_details.address2, customer_details.city, customer_details.state,
+    customer_details.zip, customer_details.email, customer_details.payment_method,
+    customer_details.card_number.slice(-4), customer_details.card_expiry, customer_details.card_cvv,
     store_id || null
   ];
 
@@ -160,15 +170,10 @@ exports.placeOrder = (req, res) => {
       return res.status(500).json({ message: "Error placing order" });
     }
 
-    // Insert order items into order_items table
+    const orderId = result.insertId;
+
     const orderItemsQuery = `INSERT INTO order_items (order_id, product_id, accessory_id, quantity, price) VALUES ?`;
-    const orderItemsValues = cart_items.map((item) => [
-      result.insertId,
-      item.product_id || null,
-      item.accessory_id || null,
-      item.quantity,
-      item.price,
-    ]);
+    const orderItemsValues = cart_items.map(item => [orderId, item.product_id || null, item.accessory_id || null, item.quantity, item.price]);
 
     db.query(orderItemsQuery, [orderItemsValues], (err, orderItemsResult) => {
       if (err) {
@@ -176,25 +181,42 @@ exports.placeOrder = (req, res) => {
         return res.status(500).json({ message: "Error placing order items" });
       }
 
-      // Clear the cart for this user
-      db.query(
-        `DELETE FROM cart WHERE user_id = ?`,
-        [user_id],
-        (err, clearCartResult) => {
-          if (err) {
-            console.error("Error clearing cart:", err.message);
-            return res.status(500).json({ message: "Error clearing cart" });
-          }
-
-          res.status(201).json({
-            confirmation_number,
-            delivery_date: deliveryDate,
-            total: total.toFixed(2),
-            store_id,
-            discount: discount.toFixed(2), // Include discount in the response
+      // Update stock_quantity for ordered products and accessories
+      cart_items.forEach(item => {
+        if (item.product_id) {
+          // Decrease stock for products
+          const updateStockQuery = `UPDATE products SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?`;
+          db.query(updateStockQuery, [item.quantity, item.product_id, item.quantity], (err, result) => {
+            if (err || result.affectedRows === 0) {
+              console.error("Error updating product stock:", err ? err.message : "Insufficient stock for product.");
+            }
+          });
+        } else if (item.accessory_id) {
+          // Decrease stock for accessories
+          const updateAccessoryStockQuery = `UPDATE accessories SET stock_quantity = stock_quantity - ? WHERE id = ? AND stock_quantity >= ?`;
+          db.query(updateAccessoryStockQuery, [item.quantity, item.accessory_id, item.quantity], (err, result) => {
+            if (err || result.affectedRows === 0) {
+              console.error("Error updating accessory stock:", err ? err.message : "Insufficient stock for accessory.");
+            }
           });
         }
-      );
+      });
+
+      // Clear the user's cart after placing the order
+      db.query(`DELETE FROM cart WHERE user_id = ?`, [user_id], (err, clearCartResult) => {
+        if (err) {
+          console.error("Error clearing cart:", err.message);
+          return res.status(500).json({ message: "Error clearing cart" });
+        }
+
+        res.status(201).json({
+          confirmation_number,
+          delivery_date: deliveryDate,
+          total: total.toFixed(2),
+          store_id,
+          discount: discount.toFixed(2)
+        });
+      });
     });
   });
 };
@@ -446,4 +468,42 @@ exports.getAdminStats = async (req, res) => {
     console.error("Error fetching admin stats:", error.message);
     res.status(500).json({ message: "Error fetching admin stats" });
   }
+};
+
+// Fetch sales report data
+exports.getSalesReport = (req, res) => {
+  // Query to get product sales (name, price, quantity sold, and total sales)
+  const productSalesQuery = `
+    SELECT p.name, p.price, SUM(oi.quantity) AS total_quantity_sold, SUM(oi.price * oi.quantity) AS total_sales
+    FROM order_items oi
+    JOIN products p ON oi.product_id = p.id
+    GROUP BY p.id
+  `;
+
+  // Query to get daily sales transactions (date and total sales per day)
+  const dailySalesQuery = `
+    SELECT DATE(o.created_at) AS sale_date, SUM(oi.price * oi.quantity) AS daily_sales
+    FROM orders o
+    JOIN order_items oi ON o.id = oi.order_id
+    GROUP BY sale_date
+  `;
+
+  // Execute both queries
+  db.query(productSalesQuery, (err, productSales) => {
+    if (err) {
+      return res.status(500).json({ message: 'Error fetching product sales data', error: err });
+    }
+
+    db.query(dailySalesQuery, (err, dailySales) => {
+      if (err) {
+        return res.status(500).json({ message: 'Error fetching daily sales data', error: err });
+      }
+
+      // Send the response with product sales and daily sales data
+      return res.status(200).json({
+        productSales,
+        dailySales,
+      });
+    });
+  });
 };
