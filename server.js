@@ -8,6 +8,7 @@ const cartRoutes = require("./routes/cartRoutes");
 const orderRoutes = require("./routes/orderRoutes");
 const storeRoutes = require("./routes/storeRoutes");
 const reviewRoutes = require("./routes/reviewRoutes");
+const customerServiceRoutes = require("./routes/customerServiceRoutes");
 const cors = require("cors");
 const connectMongoDb = require("./config/mongo");
 const connectDB = require("./config/mongo");
@@ -45,6 +46,8 @@ app.use("/orders", orderRoutes);
 app.use("/stores", storeRoutes);
 
 app.use("/review", reviewRoutes);
+
+app.use("/tickets", customerServiceRoutes);
 
 app.use(accessoryRoutes);
 
