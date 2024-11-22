@@ -4,10 +4,15 @@ const {
   getReviewsByProduct,
   updateReview,
   deleteReview,
-  getTrendingProducts,
+  processReviews,
+  searchReviews,
 } = require("../controllers/reviewController");
 const { protect } = require("../middlewares/authMiddleware");
 const router = express.Router();
+
+router.get("/processReviews", processReviews);
+
+router.post("/searchReviews", searchReviews);
 
 // POST /reviews/:productId - Add a review for a product
 router.post("/:productId", protect, addReview);

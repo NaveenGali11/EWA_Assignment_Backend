@@ -26,16 +26,18 @@ const storage = multer.diskStorage({
 });
 
 // Initialize multer upload function
-const upload = multer({ storage: storage }).single("image"); // Expect single file upload with field name 'image'
+const upload = multer({ storage: storage }).single("image");
 
 // Function to call OpenAI API for image analysis with a specific prompt
 async function analyzeImage(imagePath,description) {
     const imageData = readFileSync(imagePath, { encoding: 'base64' });
 
+    // This is a customer service request related to a product. The user provided the following description: "${description}".
+
     const prompt = `
         This is a customer service request related to a product. The user provided the following description: "${description}".
-        
-        Based on this information, please determine whether the customer request should result in:
+    
+        Based on the image and description, please determine whether the customer request should result in:
         1. Refund: If the product appears damaged or defective.
         2. Replace: If the product is incorrect (e.g., wrong product shipped).
         3. Escalate: If the description does not indicate clear damage or the wrong product.
@@ -162,7 +164,7 @@ exports.getTicketStatus = (req, res) => {
         return res.json({
             ticket_id: result[0].ticket_id,
             description: result[0].description,
-            image_url: result[0].image_url ? `http://localhost:5001/uploads/tickets/${result[0].image_url}` : null,
+            image_url: result[0].image_url ? `http://localhost:5001/uploads/${result[0].image_url}` : null,
             status: result[0].status,
             created_at: result[0].created_at,
         });
